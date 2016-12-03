@@ -24,7 +24,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);   // Cria instância MFRC522
 
 //ESCOPO FUNÇÕES
 
-String lerID ();
+String lerID (int comando);
 int verificarCartao (String dados);
 void cadastrarCartao ();
 void acessarCartao ();
@@ -53,6 +53,7 @@ void setup() {
   quantidadeCartoesCadastrados = -1;
   //digitalWrite (LED_VERMELHO, LOW);
   //digitalWrite (LED_VERDE, LOW);
+  Serial.println ("Setup OK!");
 }
 
 void loop() {
@@ -79,7 +80,7 @@ void cadastrarCartao() {
   int erro = 0;
   String cartaoAtual;
   
-  cartaoAtual = lerID();      
+  cartaoAtual = lerID(1);      
   erro = verificarCartao (cartaoAtual);
 
   if (erro == 1) {
@@ -103,6 +104,7 @@ void cadastrarCartao() {
 }
 //FUNÇÃO QUE LÊ A ID DO CARTÃO, PODE SER USADA PARA ACESSAR OU PARA CADASTRAR
 String lerID (int comando) {
+  Serial.println ("Aproxime um cartao");
   if (comando == 1) { //cadastro de cartão
     while (true) {
       if (mfrc522.PICC_IsNewCardPresent()) {

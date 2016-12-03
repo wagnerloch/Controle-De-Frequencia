@@ -1,0 +1,7 @@
+Rodando Python no Raspberry Pi
+
+http://www.circuitbasics.com/how-to-write-and-run-a-python-program-on-the-raspberry-pi/
+
+Instalando e rodando LUA no Raspberrt Pi
+
+https://bigdanzblog.wordpress.com/2015/04/16/installing-lua-on-raspberry-pi-and-getting-it-running/
