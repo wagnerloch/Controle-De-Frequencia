@@ -52,13 +52,13 @@ MFRC522 mfrc522 (PINO_SDA, PINO_RST); //Cria instância MFRC522
 static byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 }; //mac do módulo ethernet
 byte Ethernet::buffer[500];
 static uint32_t timer;
-const char website[] PROGMEM = "192.168.0.102"; //endereço IP do servidor no Raspberry Pi
+const char website[] PROGMEM = "192.168.0.103"; //endereço IP do servidor no Raspberry Pi
 String conteudo;        //Armazena nessa variável todas as informações contidas no servidor
 unsigned int tamanho;   //variável para guardar o tamanho do retorno do servidor
-String IDCartao;
+char *IDCartao;
 
 //ESCOPO DAS FUNÇÕES
-String lerID ();
+void lerID ();
 void my_callback (byte status, word off, word len);
 void acessoLiberado();
 void acessoNegado();
@@ -66,6 +66,7 @@ void acessoNegado();
 void setup() {
   Serial.begin(9600);
   Serial.println ("Iniciando setup");
+
   
   SPI.begin();
   pinMode (BUZZER, OUTPUT);
@@ -88,28 +89,34 @@ void setup() {
     Serial.println("DNS failed");
   }
   ether.printIp("SRV: ", ether.hisip);
+  delay(100);
+  IDCartao = (char*) calloc (12, sizeof(char));
   Serial.println("Setup finalizado!");
   Serial.println ("Aproxima");
-  IDCartao = "";
+  *IDCartao = "";
 }
 
 void loop() {
   ether.packetLoop(ether.packetReceive());
-  IDCartao = lerID();
-  if (IDCartao != "") { //Se um cartão tiver sido aproximado e sua ID lida com sucesso
+  //String card = lerID();
+  //card.toCharArray(IDCartao, card.length()+1);
+  //*IDCartao = lerID();
+  lerID();
+  if (IDCartao[0] != '\0') { //Se um cartão tiver sido aproximado e sua ID lida com sucesso
     Serial.print ("ID DO CARTAO: ");
-    Serial.println (IDCartao);
+    Serial.write (IDCartao);
     delay(100);
     if (millis() > timer) {
       timer = millis() + 5000;
       Serial.println();
+      
       ether.browseUrl(PSTR("/"), "", website, my_callback);
     }
   }
   
 }
 
-String lerID () {
+void lerID () {
      if (mfrc522.PICC_IsNewCardPresent ()) {
        if (mfrc522.PICC_ReadCardSerial ()) {
          String conteudorfid = "";
@@ -119,11 +126,18 @@ String lerID () {
            conteudorfid.concat (String (mfrc522.uid.uidByte[i], HEX));
          }
          conteudorfid.toUpperCase ();
-         Serial.println (conteudorfid.substring(1));
-         return conteudorfid.substring(1);
+         int i;
+         for (i = 0; i < conteudorfid.substring(1).length(); i++) {
+          IDCartao[i] = conteudorfid.substring(1)[i];
+         }
+         i++;
+         IDCartao[i] = '\0';
        }
+       
+     Serial.println(IDCartao); //ID do cartão lida com sucesso
      }
      else {
+      IDCartao[0] = '\0';
      }
 }
 
@@ -134,19 +148,20 @@ void my_callback (byte status, word off, word len) {
   Ethernet::buffer[off+500] = 0;
 
   conteudo = (const char*) Ethernet::buffer + off;
-  tamanho = conteudo.length();
   
-  if (conteudo.indexOf(IDCartao) > 0) { //procura pela ID do cartão no servidor
+  String verifica(IDCartao);
+  
+  if (conteudo.indexOf(verifica) > 0) { //procura pela ID do cartão no servidor
     Serial.println("Acesso liberado");
-    Serial.println(IDCartao);
+    Serial.println(verifica);
     Serial.print ("POSICAO: ");
-    Serial.println (conteudo.indexOf(IDCartao));
+    Serial.println (conteudo.indexOf(verifica));
     acessoLiberado();
   }
   else {
     Serial.println ("ACESSO NEGADO!");
-    Serial.print ("CARTAO: ");
-    Serial.println (IDCartao);
+    Serial.print ("CARTAO VERIFICA: ");
+    Serial.println (verifica);
     acessoNegado();  
   }
 }
@@ -157,7 +172,7 @@ void acessoLiberado() {
   delay (300);
   noTone (BUZZER);
   //digitalWrite (LED_VERDE, LOW);
-  IDCartao = "";
+  *IDCartao = "";
 }
 
 void acessoNegado() {
@@ -170,5 +185,5 @@ void acessoNegado() {
   delay (150);
   noTone (BUZZER);
   //digitalWrite (LED_VERMELHO, LOW);
-  IDCartao = "";
+  *IDCartao = "";
 }
