@@ -35,6 +35,8 @@
 /**
  * Pinagem de Outros componentes:
  * BUZZER  - Pino 7
+ * LED VERDE - Pino 2
+ * LED VERMELHO - Pino 3
  */
 
 //DECLARAÇÃO DAS BIBLIOTECAS UTILIZADAS NO PROJETO
@@ -47,6 +49,8 @@
 #define PINO_SDA 10 //Constante que define onde o pino SDA do leitor RFID está ligado
 #define PINO_RST 9 
 #define BUZZER 7
+#define LEDVERDE 2
+#define LEDVERMELHO 3
 
 MFRC522 mfrc522 (PINO_SDA, PINO_RST); //Cria instância MFRC522
 static byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 }; //mac do módulo ethernet
@@ -55,21 +59,27 @@ static uint32_t timer;
 const char website[] PROGMEM = "192.168.0.103"; //endereço IP do servidor no Raspberry Pi
 String conteudo;        //Armazena nessa variável todas as informações contidas no servidor
 unsigned int tamanho;   //variável para guardar o tamanho do retorno do servidor
-char *IDCartao;
+static char *IDCartao;
 
 //ESCOPO DAS FUNÇÕES
 void lerID ();
 void my_callback (byte status, word off, word len);
 void acessoLiberado();
 void acessoNegado();
+void testaValor();
 
 void setup() {
+  pinMode (LEDVERDE, OUTPUT);
+  pinMode (LEDVERMELHO, OUTPUT);
+  pinMode (BUZZER, OUTPUT);
+  digitalWrite (LEDVERDE, HIGH);
+  digitalWrite (LEDVERMELHO, HIGH);
   Serial.begin(9600);
   Serial.println ("Iniciando setup");
 
   
   SPI.begin();
-  pinMode (BUZZER, OUTPUT);
+  
   mfrc522.PCD_Init(); //Inicia MFRC522 (Leitor RFID)
   delay(100);
   if (ether.begin(sizeof Ethernet::buffer, mymac, 8) == 0) {
@@ -89,27 +99,21 @@ void setup() {
     Serial.println("DNS failed");
   }
   ether.printIp("SRV: ", ether.hisip);
-  delay(100);
   IDCartao = (char*) calloc (12, sizeof(char));
   Serial.println("Setup finalizado!");
   Serial.println ("Aproxima");
-  *IDCartao = "";
+  IDCartao[0] = '\0';
 }
 
 void loop() {
+  digitalWrite (LEDVERDE, LOW);
+  digitalWrite (LEDVERMELHO, LOW);
   ether.packetLoop(ether.packetReceive());
-  //String card = lerID();
-  //card.toCharArray(IDCartao, card.length()+1);
-  //*IDCartao = lerID();
   lerID();
   if (IDCartao[0] != '\0') { //Se um cartão tiver sido aproximado e sua ID lida com sucesso
-    Serial.print ("ID DO CARTAO: ");
-    Serial.write (IDCartao);
-    delay(100);
     if (millis() > timer) {
       timer = millis() + 5000;
       Serial.println();
-      
       ether.browseUrl(PSTR("/"), "", website, my_callback);
     }
   }
@@ -133,11 +137,9 @@ void lerID () {
          i++;
          IDCartao[i] = '\0';
        }
-       
-     Serial.println(IDCartao); //ID do cartão lida com sucesso
      }
      else {
-      IDCartao[0] = '\0';
+      //Precisa ser vazio
      }
 }
 
@@ -148,42 +150,47 @@ void my_callback (byte status, word off, word len) {
   Ethernet::buffer[off+500] = 0;
 
   conteudo = (const char*) Ethernet::buffer + off;
-  
-  String verifica(IDCartao);
-  
-  if (conteudo.indexOf(verifica) > 0) { //procura pela ID do cartão no servidor
-    Serial.println("Acesso liberado");
-    Serial.println(verifica);
-    Serial.print ("POSICAO: ");
-    Serial.println (conteudo.indexOf(verifica));
+  if (conteudo == NULL) {
+    digitalWrite (LEDVERMELHO, HIGH);
+  }
+  String nome;
+  int i = conteudo.indexOf(IDCartao) + 12;
+  if (conteudo.indexOf(IDCartao) > 0) { //procura pela ID do cartão no servidor
+    digitalWrite (LEDVERDE, HIGH);
+    Serial.println("Acesso liberado!");
+    Serial.print ("Bem vindo ");
+    while (conteudo[i] != '\n') {
+      Serial.print (conteudo[i++]);
+    }
+    Serial.print("\nIDCartao: ");
+    Serial.println(IDCartao);
     acessoLiberado();
   }
   else {
-    Serial.println ("ACESSO NEGADO!");
-    Serial.print ("CARTAO VERIFICA: ");
-    Serial.println (verifica);
+    digitalWrite (LEDVERMELHO, HIGH);
+    Serial.println ("ACESSO NEGADO! Não registrado no servidor!");
+    Serial.print ("IDCartao: ");
+    Serial.println (IDCartao);
     acessoNegado();  
   }
 }
 
 void acessoLiberado() {
   tone(BUZZER, 1000); //1kHz
-  //digitalWrite (LED_VERDE, HIGH);
   delay (300);
   noTone (BUZZER);
-  //digitalWrite (LED_VERDE, LOW);
-  *IDCartao = "";
+  digitalWrite (LEDVERDE, LOW);
+  IDCartao[0] = '\0';
 }
 
 void acessoNegado() {
   tone (BUZZER, 1000);
-  //digitalWrite (LED_VERMELHO, HIGH);
   delay (150);
   noTone (BUZZER);
   delay (150);
   tone (BUZZER, 1000);
   delay (150);
   noTone (BUZZER);
-  //digitalWrite (LED_VERMELHO, LOW);
-  *IDCartao = "";
+  digitalWrite (LEDVERMELHO, LOW);
+  IDCartao[0] = '\0';
 }
