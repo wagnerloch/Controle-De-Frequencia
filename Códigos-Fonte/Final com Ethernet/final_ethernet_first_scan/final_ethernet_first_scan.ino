@@ -58,7 +58,7 @@ MFRC522 mfrc522 (PINO_SDA, PINO_RST); //Cria instância MFRC522
 static byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 }; //mac do módulo ethernet
 byte Ethernet::buffer[500];
 static uint32_t timer;
-const char website[] PROGMEM = "192.168.0.102"; //endereçoIP do servidor no Raspberry Pi
+const char website[] PROGMEM = "192.168.161.241"; //endereçoIP do servidor no Raspberry Pi
 String conteudo;        //Armazena nessa variável todas as informações contidas no servidor
 unsigned int tamanho;   //variável para guardar o tamanho do retorno do servidor
 static char *IDCartao;
